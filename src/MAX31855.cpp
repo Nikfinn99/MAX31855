@@ -45,7 +45,6 @@
 
 #include <MAX31855.h>
 
-
 /**************************************************************************/
 /*
     MAX31855()
@@ -56,9 +55,9 @@
      - cs is chip select, set CS low to enable the serial interface
 */
 /**************************************************************************/
-MAX31855::MAX31855(uint8_t cs)
+MAX31855::MAX31855(SPIClass &spi) :
+        spi_(spi)
 {
-  _cs = cs; //cs chip select
 }
 
 /**************************************************************************/
@@ -70,12 +69,12 @@ MAX31855::MAX31855(uint8_t cs)
 /**************************************************************************/
 void MAX31855::begin(void)
 {
-  pinMode(_cs, OUTPUT);
-  digitalWrite(_cs, HIGH);                  //disables SPI interface for MAX31855, but it will initiate measurement/conversion
+    pinMode(_cs, OUTPUT);
+    digitalWrite(_cs, HIGH);  //disables SPI interface for MAX31855, but it will initiate measurement/conversion
 
-  SPI.begin();                              //setting hardware SCK, MOSI, SS to output, pull SCK, MOSI low & SS high    
+    SPI.begin();  //setting hardware SCK, MOSI, SS to output, pull SCK, MOSI low & SS high
 
-  delay(MAX31855_CONVERSION_POWER_UP_TIME);
+    delay(MAX31855_CONVERSION_POWER_UP_TIME);
 }
 
 /**************************************************************************/
@@ -99,16 +98,21 @@ void MAX31855::begin(void)
 /**************************************************************************/
 uint8_t MAX31855::detectThermocouple(int32_t rawValue)
 {
-  if (rawValue == MAX31855_FORCE_READ_DATA) rawValue = readRawData();
+    if (rawValue == MAX31855_FORCE_READ_DATA)
+        rawValue = readRawData();
 
-  if (bitRead(rawValue, 16) == 1)
-  {
-    if      (bitRead(rawValue, 2) == 1) return MAX31855_THERMOCOUPLE_SHORT_TO_VCC;
-    else if (bitRead(rawValue, 1) == 1) return MAX31855_THERMOCOUPLE_SHORT_TO_GND;
-    else if (bitRead(rawValue, 0) == 1) return MAX31855_THERMOCOUPLE_NOT_CONNECTED;
-    else                                return MAX31855_THERMOCOUPLE_UNKNOWN;
-  }
-  return MAX31855_THERMOCOUPLE_OK;
+    if (bitRead(rawValue, 16) == 1)
+    {
+        if (bitRead(rawValue, 2) == 1)
+            return MAX31855_THERMOCOUPLE_SHORT_TO_VCC;
+        else if (bitRead(rawValue, 1) == 1)
+            return MAX31855_THERMOCOUPLE_SHORT_TO_GND;
+        else if (bitRead(rawValue, 0) == 1)
+            return MAX31855_THERMOCOUPLE_NOT_CONNECTED;
+        else
+            return MAX31855_THERMOCOUPLE_UNKNOWN;
+    }
+    return MAX31855_THERMOCOUPLE_OK;
 }
 
 /**************************************************************************/
@@ -123,11 +127,13 @@ uint8_t MAX31855::detectThermocouple(int32_t rawValue)
 /**************************************************************************/
 uint16_t MAX31855::getChipID(int32_t rawValue)
 {
-  if (rawValue == MAX31855_FORCE_READ_DATA) rawValue = readRawData();
+    if (rawValue == MAX31855_FORCE_READ_DATA)
+        rawValue = readRawData();
 
-  if (bitRead(rawValue, 17) == 0 && bitRead(rawValue, 3) == 0) return MAX31855_ID;
+    if (bitRead(rawValue, 17) == 0 && bitRead(rawValue, 3) == 0)
+        return MAX31855_ID;
 
-  return 0;
+    return 0;
 }
 
 /**************************************************************************/
@@ -151,13 +157,15 @@ uint16_t MAX31855::getChipID(int32_t rawValue)
 /**************************************************************************/
 float MAX31855::getTemperature(int32_t rawValue)
 {
-  if (rawValue == MAX31855_FORCE_READ_DATA) rawValue = readRawData();
+    if (rawValue == MAX31855_FORCE_READ_DATA)
+        rawValue = readRawData();
 
-  if (detectThermocouple(rawValue) != MAX31855_THERMOCOUPLE_OK || getChipID(rawValue) != MAX31855_ID) return MAX31855_ERROR;
+    if (detectThermocouple(rawValue) != MAX31855_THERMOCOUPLE_OK || getChipID(rawValue) != MAX31855_ID)
+        return MAX31855_ERROR;
 
-  rawValue = rawValue >> 18; //clear D17..D0 bits
+    rawValue = rawValue >> 18;  //clear D17..D0 bits
 
-  return (float)rawValue * MAX31855_THERMOCOUPLE_RESOLUTION;
+    return (float)rawValue * MAX31855_THERMOCOUPLE_RESOLUTION;
 }
 
 /**************************************************************************/
@@ -175,14 +183,16 @@ float MAX31855::getTemperature(int32_t rawValue)
 /**************************************************************************/
 float MAX31855::getColdJunctionTemperature(int32_t rawValue)
 {
-  if (rawValue == MAX31855_FORCE_READ_DATA) rawValue = readRawData();
+    if (rawValue == MAX31855_FORCE_READ_DATA)
+        rawValue = readRawData();
 
-  if (getChipID(rawValue) != MAX31855_ID) return MAX31855_ERROR;
+    if (getChipID(rawValue) != MAX31855_ID)
+        return MAX31855_ERROR;
 
-  rawValue = rawValue & 0x0000FFFF;                                   //clear D31..D16 bits
-  rawValue = rawValue >> 4;                                           //clear D3...D0  bits
+    rawValue = rawValue & 0x0000FFFF;  //clear D31..D16 bits
+    rawValue = rawValue >> 4;          //clear D3...D0  bits
 
-  return (float)rawValue * MAX31855_COLD_JUNCTION_RESOLUTION;
+    return (float)rawValue * MAX31855_COLD_JUNCTION_RESOLUTION;
 }
 
 /**************************************************************************/
@@ -220,25 +230,25 @@ float MAX31855::getColdJunctionTemperature(int32_t rawValue)
 /**************************************************************************/
 int32_t MAX31855::readRawData(void)
 {
-  int32_t rawData = 0;
+    int32_t rawData = 0;
 
-  digitalWrite(_cs, LOW);                                            //stop  measurement/conversion
-  delayMicroseconds(1);                                              //4MHz  is 0.25usec, do we need it???
-  digitalWrite(_cs, HIGH);                                           //start measurement/conversion
-  delay(MAX31855_CONVERSION_TIME);
+    digitalWrite(_cs, LOW);   //stop  measurement/conversion
+    delayMicroseconds(1);     //4MHz  is 0.25usec, do we need it???
+    digitalWrite(_cs, HIGH);  //start measurement/conversion
+    delay(MAX31855_CONVERSION_TIME);
 
-  SPI.beginTransaction(SPISettings(5000000UL, MSBFIRST, SPI_MODE0)); //speed ~5MHz, read MSB first, SPI mode 0, see note
-   
-  digitalWrite(_cs, LOW);                                            //set CS low to enable SPI interface for MAX31855
+    SPI.beginTransaction(SPISettings(5000000UL, MSBFIRST, SPI_MODE0));  //speed ~5MHz, read MSB first, SPI mode 0, see note
 
-  for (uint8_t i = 0; i < 2; i++)                                    //read 32-bits via hardware SPI, in order MSB->LSB (D31..D0 bit)
-  {
-    rawData = (rawData << 16) | SPI.transfer16(0x0000);              //chip has read only SPI & MOSI not connected, so it doesn't metter what to send
-  }
+    digitalWrite(_cs, LOW);  //set CS low to enable SPI interface for MAX31855
 
-  digitalWrite(_cs, HIGH);                                           //disables SPI interface for MAX31855, but it will initiate measurement/conversion
+    for (uint8_t i = 0; i < 2; i++)  //read 32-bits via hardware SPI, in order MSB->LSB (D31..D0 bit)
+    {
+        rawData = (rawData << 16) | SPI.transfer16(0x0000);  //chip has read only SPI & MOSI not connected, so it doesn't metter what to send
+    }
 
-  SPI.endTransaction();                                              //de-asserting hw chip select & free hw SPI for other slaves
+    digitalWrite(_cs, HIGH);  //disables SPI interface for MAX31855, but it will initiate measurement/conversion
 
-  return rawData;
+    SPI.endTransaction();  //de-asserting hw chip select & free hw SPI for other slaves
+
+    return rawData;
 }

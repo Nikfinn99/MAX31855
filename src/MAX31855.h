@@ -46,58 +46,55 @@
 #ifndef MAX31855_h
 #define MAX31855_h
 
-#if defined(ARDUINO) && ((ARDUINO) >= 100) //arduino core v1.0 or later
-#include <Arduino.h>
+#if defined(ARDUINO) && ((ARDUINO) >= 100)  //arduino core v1.0 or later
+#    include <Arduino.h>
 #else
-#include <WProgram.h>
+#    include <WProgram.h>
 #endif
 
 #if defined(__AVR__)
-#include <avr/pgmspace.h>                  //use for PROGMEM Arduino AVR
+#    include <avr/pgmspace.h>  //use for PROGMEM Arduino AVR
 #elif defined(ESP8266)
-#include <pgmspace.h>                      //use for PROGMEM Arduino ESP8266
+#    include <pgmspace.h>  //use for PROGMEM Arduino ESP8266
 #elif defined(_VARIANT_ARDUINO_STM32_)
-#include <avr/pgmspace.h>                  //use for PROGMEM Arduino STM32
+#    include <avr/pgmspace.h>  //use for PROGMEM Arduino STM32
 #endif
 
-#ifndef  MAX31855_SOFT_SPI                 //enable upload spi.h
-#include <SPI.h>
+#ifndef MAX31855_SOFT_SPI  //enable upload spi.h
+#    include <SPI.h>
 #endif
 
+#include "cs_guard.h"
 
-#define MAX31855_CONVERSION_POWER_UP_TIME   200    //in milliseconds
-#define MAX31855_CONVERSION_TIME            100    //in milliseconds, 9..10Hz sampling rate 
-#define MAX31855_THERMOCOUPLE_RESOLUTION    0.25   //in °C per dac step
-#define MAX31855_COLD_JUNCTION_RESOLUTION   0.0625 //in °C per dac step
+#define MAX31855_CONVERSION_POWER_UP_TIME 200     //in milliseconds
+#define MAX31855_CONVERSION_TIME 100              //in milliseconds, 9..10Hz sampling rate
+#define MAX31855_THERMOCOUPLE_RESOLUTION 0.25     //in °C per dac step
+#define MAX31855_COLD_JUNCTION_RESOLUTION 0.0625  //in °C per dac step
 
+#define MAX31855_ID 31855
+#define MAX31855_FORCE_READ_DATA 7  //force to read the data, 7 is unique because d2d1d0 can't be all high at the same time
+#define MAX31855_ERROR 2000         //returned value if any error happends
 
-#define MAX31855_ID                         31855
-#define MAX31855_FORCE_READ_DATA            7      //force to read the data, 7 is unique because d2d1d0 can't be all high at the same time
-#define MAX31855_ERROR                      2000   //returned value if any error happends
-
-#define MAX31855_THERMOCOUPLE_OK            0
-#define MAX31855_THERMOCOUPLE_SHORT_TO_VCC  1
-#define MAX31855_THERMOCOUPLE_SHORT_TO_GND  2
+#define MAX31855_THERMOCOUPLE_OK 0
+#define MAX31855_THERMOCOUPLE_SHORT_TO_VCC 1
+#define MAX31855_THERMOCOUPLE_SHORT_TO_GND 2
 #define MAX31855_THERMOCOUPLE_NOT_CONNECTED 3
-#define MAX31855_THERMOCOUPLE_UNKNOWN       4
-
+#define MAX31855_THERMOCOUPLE_UNKNOWN 4
 
 class MAX31855
 {
-  public:
-   MAX31855(uint8_t cs);
+public:
+    MAX31855(SPIClass &spi);
 
-   void     begin(void);
-   uint8_t  detectThermocouple(int32_t rawValue = MAX31855_FORCE_READ_DATA);
-   uint16_t getChipID(int32_t rawValue = MAX31855_FORCE_READ_DATA);
-   float    getTemperature(int32_t rawValue = MAX31855_FORCE_READ_DATA);
-   float    getColdJunctionTemperature(int32_t rawValue = MAX31855_FORCE_READ_DATA);
-   int32_t  readRawData(void);
- 
-  private:
+    void begin(void);
+    uint8_t detectThermocouple(int32_t rawValue = MAX31855_FORCE_READ_DATA);
+    uint16_t getChipID(int32_t rawValue = MAX31855_FORCE_READ_DATA);
+    float getTemperature(int32_t rawValue = MAX31855_FORCE_READ_DATA);
+    float getColdJunctionTemperature(int32_t rawValue = MAX31855_FORCE_READ_DATA);
+    int32_t readRawData(void);
 
-  protected:
-   uint8_t _cs;
+private:
+    SPIClass &spi_;
 };
 
 #endif
